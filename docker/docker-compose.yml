@@ -1,0 +1,174 @@
+###############################################################
+# Services
+###############################################################
+services:
+  ################################################################  
+  # Database systems
+  ################################################################        
+  # Google alloydbomni Sql
+  alloydbomni:
+    image: google/alloydbomni 
+    container_name: alloydbomni
+    hostname: alloydbomni
+    restart: unless-stopped
+    networks:
+      ai_net:
+    volumes:
+      - "alloydbomni_data:/var/lib/postgresql/data"
+    environment:
+      - PGDEBUG
+      - POSTGRES_DB=$PG_RAG
+      - POSTGRES_USER=$priv_gpt_user
+      - POSTGRES_PASSWORD=$priv_gpt_pwd 
+
+  ###############################################################
+  # AI
+  ###############################################################
+  ollama:
+    image: ollama/ollama:rocm
+    ports:
+      - 11434:11434
+    volumes:
+      - ollama_config:/root/.ollama
+    container_name: ollama
+    security_opt:
+      - "seccomp=unconfined"
+    tty: true
+    restart: always
+    devices:
+      - /dev/kfd
+      - /dev/dri 
+    environment:
+      - OLLAMA_KEEP_ALIVE=24h
+      - OLLAMA_HOST=0.0.0.0
+      - HSA_OVERRIDE_GFX_VERSION=9.0.0
+      - HSA_ENABLE_SDMA=0
+    networks:
+      ai_net:
+
+  ollama-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: ollama-webui
+    volumes:
+      - ollama_webui_config:/app/backend/data
+    depends_on:
+      - ollama
+    ports:
+      - 8080:8080
+    environment: # https://docs.openwebui.com/getting-started/env-configuration#default_models
+      - OLLAMA_BASE_URLS=http://ollama:11434 #comma separated ollama hosts
+      - ENV=dev
+      - WEBUI_AUTH=False
+      - WEBUI_NAME="Home Automation Madness AI"
+      - WEBUI_URL=http://localhost:8080
+      - WEBUI_SECRET_KEY=t0p-s3cr3t
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    restart: unless-stopped
+    networks:
+      ai_net:
+
+  privategpt:
+    image: homeautomationmadness/private-gpt-amd-rocm:latest
+    container_name: privategpt
+    devices:
+      - /dev/kfd
+      - /dev/dri 
+    environment:
+      ### Local Processing
+      # LLAMACPP_LLM_HF_REPO_ID: $llamacpp_llm_hf_repo_id
+      # LLAMACPP_LLM_HF_MODEL_FILE: $llamacpp_llm_hf_model_file
+      # LLAMACPP_EMBEDDING_HF_MODEL_NAME: $llamacpp_embedding_hf_model_name
+      # LLM_TOKENIZER: $llm_tokenizer
+      # EMBEDDING_INGEST_MODE: $embedding_ingest_mode
+      # EMBEDDING_COUNT_WORKERS: $embedding_count_workers
+      # EMBEDDING_MODE: $embedding_mode
+      # HUGGINGFACE_TOKEN: $huggingface_token
+      PGPT_PROFILES: $pgpt_profiles
+      RUN_SETUP: $run_setup
+      ### Ollama settings
+      LLM_MODE: $llm_mode
+      OLLAMA_API_BASE: $ollama_api_base
+      OLLAMA_EMBEDDING_API_BASE: $ollama_embedding_api_base
+      OLLAMA_LLM_MODEL: $ollama_llm_model
+      OLLAMA_EMBEDDING_MODEL: $ollama_embedding_model
+      EMBEDDING_MODE: $embedding_mode
+      EMBEDDING_INGEST_MODE: $embedding_ingest_mode
+      ### Releated to Postgress & Ollama
+      EMBEDDING_EMBED_DIM: $embedding_embed_dim
+      # ### Postgres Rag
+      NODESTORE_DATABASE: $nodelistore_database
+      VECTORSTORE_DATABASE: $vectorstore_database
+      POSTGRES_HOST: $postgress_host
+      POSTGRES_PORT: $postgres_port
+      POSTGRES_DATABASE: $pg_rag
+      POSTGRES_USER: $priv_gpt_user
+      POSTGRES_PASSWORD: $priv_gpt_pwd
+      POSTGRES_SCHEMA_NAME: $postgres_schema_name # - the postgres schema name - Default: private_gpt
+      ## RAG extraction
+      RAG_SIMILARITY_TOP_K: $rag_similarity_top_k
+      RAG_RERANK_ENABLED: $rag_rerank_enabled
+      RAG_RERANK_MODEL: $rag_rerank_model
+      RAG_RERANK_TOP_N: $rag_rerank_top_n
+      ### sYSTEM STUFF
+      PUID: $PUID
+      PGID: $PGID
+      TZ: $TZ
+    volumes:
+      - privategpt_data:/home/worker/app/local_data
+      - privategpt_models:/home/worker/app/models
+    ports:
+      - 8197:8080/tcp
+    networks:
+      ai_net:
+
+###############################################################
+# Networks
+###############################################################
+  ai_net:
+    name: ai_net
+    driver: bridge
+
+###############################################################
+# Volumes
+###############################################################
+volumes:
+  alloydbomni_data:
+    driver: local
+    name: alloydbomni_data
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$CONTAINERCONFIG/private-gpt-rocm-docker/docker-data/ollama/config'
+
+  ollama_config:
+    driver: local
+    name: ollama_config
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$CONTAINERCONFIG/private-gpt-rocm-docker/docker-data/ollama/config'
+  
+  ollama_webui_config:
+    driver: local
+    name: ollama_webui_config
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$CONTAINERCONFIG/ollama_webui_config/config/'
+
+  privategpt_models:
+    driver: local
+    name: privategpt_models
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$CONTAINERCONFIG/privategpt/models/'
+
+  privategpt_data:
+    driver: local
+    name: privategpt_data
+    driver_opts:
+      type: 'none'
+      o: 'bind'
+      device: '$CONTAINERCONFIG/privategpt/data/'
