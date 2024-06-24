@@ -35,15 +35,16 @@
 ### 1.1 docker build <a name="dockerbuild"></a>
 So if you have the desire or expertise you can build this container image yourself by running the command below. 
 
-You will need a hugginface token: with out it the build will fail.
+You will need a Huggingface token: without it, the build will fail.
 
-Pull the project form github:
+Pull the project from GitHub:
+
 ```shell
 git pull https://github.com/homeautomationmadness/private-gpt-amd-rocm.git
 cd private-gpt-amd-rocm/build
 ```
 
-When this is built it will be stored in your local docker instances as a usable container image.
+When this is built, it will be stored in your local docker instances as a usable container image.
 
 ```shell
 docker build --no-cache --progress=plain --rm --build-arg \ 
@@ -71,13 +72,14 @@ HUGGINGFACE_TOKEN=hf_<your TOKEN from huggingface> \
 ```
 
 ### 1.2 docker-compose.yml use Ollama <a name="docker-compose"></a>
-Ollama will be the core and the workhorse of this setup the image selected is tuned and built to allow the use of selected AMD Radeon GPU's. This provides the benefits of it is ready to run on AMD Radeon GPUs, centralised and local control over the LLMs (Large Language Models) that you choose to use.
+Ollama will be the core and the workhorse of this setup the image selected is tuned and built to allow the use of selected AMD Radeon GPUs. This provides the benefits of it being ready to run on AMD Radeon GPUs, centralised and local control over the LLMs (Large Language Models) that you choose to use.
 
-The Private GPT image that you can build using the provided docker file or the the already compiled image allow you to use it independently or link to Ollama and external systems.
+The Private GPT image that you can build using the provided docker file or the the already compiled image allows you to use it independently or link to Ollama and external systems.
 
-At the time of putting this together I used Ollama for the queriers and the chats and Private GPT to do the Embeddings To RAG
+At the time of putting this together, I used Ollama for the queries and the chats and Private GPT to do the Embeddings To RAG.
 
-configuration will be done in the .env file 
+
+Configuration will be done in the .env file 
 
 ```yaml
 ###############################################################
@@ -176,7 +178,7 @@ services:
       OLLAMA_EMBEDDING_MODEL: $ollama_embedding_model
       EMBEDDING_MODE: $embedding_mode
       EMBEDDING_INGEST_MODE: $embedding_ingest_mode
-      ### Releated to Postgress & Ollama
+      ### Related to Postgres & Ollama
       EMBEDDING_EMBED_DIM: $embedding_embed_dim
       # ### Postgres Rag
       NODESTORE_DATABASE: $nodelistore_database
@@ -261,39 +263,252 @@ See [2. Environment Variables](#environment-variables) below to update according
 
 ### 1.2 docker-compose.yml with custom model <a name="docker-compose-custom"></a>
 
-```yaml
-
-services:
-  # https://hub.docker.com/r/3x3cut0r/privategpt
-  privategpt:
-    image: 3x3cut0r/privategpt:latest
-    container_name: privategpt
-    environment:
-      LLAMACPP_LLM_HF_REPO_ID: "TheBloke/dolphin-2.6-mistral-7B-GGUF"
-      LLAMACPP_LLM_HF_MODEL_FILE: "dolphin-2.6-mistral-7b.Q4_K_M.gguf"
-      LLAMACPP_EMBEDDING_HF_MODEL_NAME: "BAAI/bge-large-en-v1.5"
-      EMBEDDING_INGEST_MODE: "parallel"
-      EMBEDDING_COUNT_WORKERS: "4"
-    volumes:
-      - /path/to/your/model/dolphin-2.6-mistral-7b.Q4_K_M.gguf:/home/worker/app/models/dolphin-2.6-mistral-7b.Q4_K_M.gguf
-    ports:
-      - 8080:8080/tcp
-```
-
 ### 2 Environment Variables <a name="environment-variables"></a>
 
 #### 2.1 System variables
+Environment variables are used in this setup to control most settings, the default .env file looks like the one below, it is located in the ./docker folder with the docker-compose.yml file above.
 
-To get the User ID (PUID) run:
+Following this we will look at initial values to update and how to get some of them.
+
+
+```yaml
+################################################################  
+# Container system settings
+################################################################ 
+COMPOSE_PROJECT_NAME=Home_Auto_AI
+CONTAINERCONFIG="<Docker Container Path>"
+PUID=<get from running id on linux command line>
+PGID=<get from running id on linux command line>
+TZ=Europe/London
+
+################################################################  
+# Container image versions
+################################################################ 
+OLLAMA_SW_VER=rocm              # Ollama AMD compiled Version
+PRIVATEGPT=latest               # Private gpt AMD ROCM version
+
+################################################################  
+# Container services ports
+################################################################  
+PORTAINER_PORT=9002
+
+################################################################  
+# AlloyDB Omni 
+################################################################  
+PG_RAG=private_ai
+priv_gpt_user=postgres
+priv_gpt_pwd=<aplhanumeric password>
+
+################################################################  
+# Private GPT
+################################################################  
+### local processing
+llamacpp_llm_hf_repo_id="Cyborg-AI/mystral-hf-7b-v0.1.gguf"
+llamacpp_llm_hf_model_file="mystral-hf-7b-v0.1.gguf"
+llamacpp_embedding_hf_model_name="BAAI/bge-small-en-v1.5"
+llm_tokenizer=mistralai/Mistral-7B-Instruct-v0.2
+embedding_ingest_mode=parallel
+embedding_count_workers=4
+embedding_mode=huggingface
+huggingface_token=<hugginface token>
+pgpt_profiles=local
+run_setup=true
+
+### Ollama settings
+llm_mode=ollama
+ollama_api_base=http://ollama:11434
+ollama_embedding_api_base=http://ollama:11434
+ollama_llm_model=mistral # llama3:8b
+ollama_embedding_model=BAAI/bge-small-en-v1.5 # nomic-embed-text
+embedding_mode=ollama
+embedding_ingest_mode=simple
+
+### related to Postgres & Ollama
+embedding_embed_dim=384
+
+### Postgres rag
+nodelistore_database=postgres
+vectorstore_database=postgres
+postgres_host=alloydbomni # - the postgres host address - Default=postgres
+postgres_port=5432 # - the postgres port - Default=5432
+postgres_database=$pg_rag # - the postgres database name - Default=postgres
+postgres_user=$priv_gpt_user # - the postgres username - Default=postgres
+postgres_password=$priv_gpt_pwd # - the postgres usernames password - Default=admin
+postgres_schema_name=<schema name> # - the postgres schema name - Default=private_gpt
+
+### rag extraction
+rag_similarity_top_k=10
+rag_rerank_enabled=true
+rag_rerank_model=cross-encoder/ms-marco-MiniLM-L-2-v2
+rag_rerank_top_n=5
+
+```
+##### Container User settings
+
+To update the PUID and PGID in the **Container system settings** section of the .env file.
+
+```yaml
+################################################################  
+# Container system settings
+################################################################ 
+COMPOSE_PROJECT_NAME=Home_Auto_AI
+CONTAINERCONFIG="<Docker Container Path>"
+PUID=(User id number)
+PGID=(Docker Group id number)
+TZ=Europe/London
+
+                  ............
+```
+
+
+To get the User ID (**PUID**) run:
 ```bash
 id -u
 ```
 
-To get the docker Group id (PGID)  run the fiollowing bash command:
+To get the docker Group id (**PGID**)  run the following bash command:
 ```bash
 getent group docker | cut -d: -f3
 ```
 
+##### AlloyDB/Postgres SQL root user settings
+
+```yaml
+                  ............
+################################################################  
+# AlloyDB Omni 
+################################################################  
+PG_RAG=private_ai
+priv_gpt_user=postgres
+priv_gpt_pwd=(aplhanumeric password)
+                  ...........
+```
+
+To create a random password for AlloyDB Omni, you can run the following command shown below. I would run it three times and then splice the mix together to form a 12 - 16 password as this will be the master user with God rights.
+
+
+
+```bash
+openssl rand -base64 18 | tr -dc 'a-z0-9' | head -c12; echo
+```
+
+Once you have this replace **(alphanumeric password)** with the code. This now makes Alloydb Omni or PostgreSQL ready for the next steps
+
+
+##### Creating PrivateGPT RAG database & user
+PrivateGPT supports many different backend databases in this use case Postgres SQL in the Form of [Googles AlloyDB Omni](https://cloud.google.com/alloydb/docs/omni) which is a Postgres SQL compliant engine written by Google for Generative AI and runs faster than Postgres native server.
+
+
+
+For this lab, I have not used the best practices of using a different user and password but you should. once you are comfortable with the deployment.
+
+
+```yaml
+
+                  ............
+                  
+################################################################  
+# AlloyDB Omni 
+################################################################  
+                  ............
+### postgres rag
+                  ............
+postgres_host=alloydbomni # - the postgres host address - Default=postgres
+postgres_port=5432 # - the postgres port - Default=5432
+postgres_database=$pg_rag # - the postgres database name - Default=postgres
+postgres_user=$priv_gpt_user # - the postgres username - Default=postgres
+postgres_password=$priv_gpt_pwd # - the postgres usernames password - Default=admin
+postgres_schema_name=(schema name) # - the postgres schema name - Default=private_gpt
+
+```
+##### Better Practice Create PrivateGPT Database and User
+If you want to do initial deployment to follow best practice, you need to update the following variables: <a name="rootuserpwdbp"></a> 
+```yaml
+postgres_user=$priv_gpt_user
+postgres_password=$priv_gpt_pwd
+```
+
+To do this, run the following commands:
+```bash
+cd Path_of_project 
+cd docker
+docker compose -f docker-compose.yml --env-file .env up -d alloydbomni
+```
+
+Execute the following commands to create the AlloyDB/postgres user and password.
+```bash
+docker compose -f docker-compose.yml --env-file .env exec -it alloydbomni psql -h localhost -U postgres
+
+```
+The terminal window displays psql login text that ends with a postgres=# prompt.
+
+The following commands will then allow you to create a new User, Database, and set the user password and permissions to crud the database.
+
+Make sure that you update the **'PASSWORD'** in the first line keeping it inside single quotes. The method used to create the Postgres password [above](#rootuserpwdbp) could be used.
+
+```psql
+CREATE USER private_gpt WITH PASSWORD 'PASSWORD';
+CREATEDB private_gpt_db;
+GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO private_gpt;
+GRANT SELECT,USAGE ON ALL SEQUENCES IN SCHEMA public TO private_gpt;
+\q # This will quit psql client and exit back to your user bash prompt.
+```
+##### Using Ollama as LLM engine
+This is the default for this lab setup which offloads most of the process to the Ollama engine and uses the models that you download there. so looking at the setting 
+`ollama_embedding_model=BAAI/bge-small-en-v1.5 `
+
+The LLMs ***BAAI/bge-small-en-v1.5*** & ***mistral*** need to exist on the Ollama engine otherwise you will get failure messages.
+
+```yaml
+
+                  ............
+### Ollama settings
+llm_mode=ollama
+ollama_api_base=http://ollama:11434
+ollama_embedding_api_base=http://ollama:11434
+ollama_llm_model=mistral 
+ollama_embedding_model=BAAI/bge-small-en-v1.5 
+embedding_mode=ollama
+
+                  ............
+
+### postgres rag
+                  ............
+postgres_host=alloydbomni # - the postgres host address - Default=postgres
+postgres_port=5432 # - the postgres port - Default=5432
+postgres_database=$pg_rag # - the postgres database name - Default=postgres
+postgres_user=$priv_gpt_user # - the postgres username - Default=postgres
+postgres_password=$priv_gpt_pwd # - the postgres usernames password - Default=admin
+postgres_schema_name=(schema name) # - the postgres schema name - Default=private_gpt
+
+```
+
+#### Letting Private GPT be the LLM Engine
+If you do not want to use the Ollama engine, the LLMs can be run from within/on Private GPT instance.
+
+For the following example config, I am using the Hugginface repository of LLMs. This requires you to have a Hugginface API key, this is currently free
+. [See here for more info. ](https://huggingface.co/docs/hub/en/security-tokens).
+
+These are already defined in the .env file and commented out. not the changes to ***llm_mode*** from **ollama** to **llamacpp** as well as the specifications of the LLM model info.
+
+```yaml
+################################################################  
+# Private GPT
+################################################################  
+### local processing
+llm_mode=llamacpp
+llamacpp_llm_hf_repo_id="Cyborg-AI/mystral-hf-7b-v0.1.gguf"
+llamacpp_llm_hf_model_file="mystral-hf-7b-v0.1.gguf"
+llamacpp_embedding_hf_model_name="BAAI/bge-small-en-v1.5"
+llm_tokenizer=mistralai/Mistral-7B-Instruct-v0.2
+embedding_ingest_mode=parallel
+embedding_count_workers=4
+embedding_mode=huggingface
+huggingface_token=<hugginface token>
+```
+For more customisations and alternative settings for connecting ChatGPT, SageMaker, Copilot etc, [see 2.2 Private GPT Settings below](#gpt-settings).
+
+The big difference is apart from the downloading of the Large Language Models (LLMs) you are running this locally without dependency on the internet, which means your data is kept from transmission outside of your controlled domain.
 
 #### 2.2 Private GPT settings <a name="gpt-settings"></a>
 **you can adjust all values inside the [settings.yaml](https://github.com/homeautomationmadness/private-gpt-amd-rocm/blob/main/build/settings.yaml) with environment variables**
@@ -478,7 +693,7 @@ secret: "Basic c2VjcmV0OmtleQ=="
 - `5432/tcp` - HTTP Port
 
 **Ollama**
-- ` 11434/tcp` - HTTP Port
+- `11434/tcp` - HTTP Port
 
 **Ollama Web UI**
 - `8080/tcp` - HTTP Port
@@ -487,36 +702,48 @@ secret: "Basic c2VjcmV0OmtleQ=="
 - `8197/tcp` - HTTP Port
 
 ### 5 Running <a name="running-it"></a>
-First check that you can run the docker-compose.yml file.
+First, check that you can run the docker-compose.yml file..
 ```bash
 cd Path_of_project 
 cd docker
 docker compose -f docker-compose.yml --env-file .env config
 ```
-The output of this if correct should be the same oas the docker files, but with environment variables replced with the values.
+The output of this if correct should be the same as the docker files, but with environment variables replaced with the values.
 
-Next optional step in case you have slow internet is to perfrom a pull of the images.
+The next optional step in case you have slow internet is to perform a pull of the images.
+
 ```bash
 docker compose -f docker-compose.yml --env-file .env pull
 ```
 
-If the Pull has completed or you have skipped it run the following comman to stand up the environment.
+If the `docker pull`  been completed or you have skipped it run the following command to set up the environment.
 ```bash
 docker compose -f docker-compose.yml --env-file .env up -d
 ```
 
 Next steps,  if there are erros the those need to be sorted then after that first go to Ollama web UI on http://server_name_or_IP_address:8080 to download the desired models as set in the settings for PrivateGPT settings.
 
-Then when that is done, login to privategpt and check connection to Ollama.
+When that is done:
+- **Login to Ollama**
+  HTTP://*Ollama_UI_Server_Address*:8080 e.g. HTTP://192.168.1.1:8080
+  - Got to Settings --> Models
+    - Download Models according to the installation requirments
+- **Login to Private GPT**
+  HTTP://Ollama_UI_Server_Address:8197 e.g. HTTP://192.168.1.1:8197
+  - Check connection to Ollama. 
+
 
 ### 6 Find Me <a name="findme"></a>
 
 - [GitHub](https://github.com/homeautomationmadness)
 - [DockerHub](https://hub.docker.com/u/homeautomationmadness)
 
-
+Thanks to the followining Projects and tecnoligest for the insperation to create this project.
+- NetworkChuck of [The NetworkChuck Academy](https://academy.networkchuck.com/)
+- GitHub - [3x3cut0r](https://hub.docker.com/u/3x3cut0r) 
+- GitHub - [HardAndHeavy](https://github.com/HardAndHeavy)
 
 ### 7 License <a name="license"></a>
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0) - This project is licensed under the GNU General Public License - see the [gpl-3.0](https://www.gnu.org/licenses/gpl-3.0.en.html) for details.
-``
+
