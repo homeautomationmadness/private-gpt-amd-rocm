@@ -21,8 +21,8 @@
 
 1. [Usage](#usage)
    1.1 [docker build](#dockerbuild)  
-   1.2 [docker-compose.yaml use Ollama](#docker-compose)  
-   1.3 [docker-compose.yaml without Ollama](#docker-compose-custom)
+   1.2 [docker-compose.yml use Ollama](#docker-compose)  
+   1.3 [docker-compose.yml without Ollama](#docker-compose-custom)
 2. [Environment Variables](#environment-variables)
 3. [Volumes](#volumes)
 4. [Ports](#ports)

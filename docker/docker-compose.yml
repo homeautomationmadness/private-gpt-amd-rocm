@@ -132,14 +132,13 @@ services:
 ###############################################################
 # Volumes
 ###############################################################
-volumes:
-  alloydbomni_data:
+volumes:alloydbomni_data:
     driver: local
     name: alloydbomni_data
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '$CONTAINERCONFIG/private-gpt-rocm-docker/docker-data/ollama/config'
+      device: '$CONTAINERCONFIG/alloydbomni/data'
 
   ollama_config:
     driver: local
@@ -147,7 +146,7 @@ volumes:
     driver_opts:
       type: 'none'
       o: 'bind'
-      device: '$CONTAINERCONFIG/private-gpt-rocm-docker/docker-data/ollama/config'
+      device: '$CONTAINERCONFIG/ollama/config'
   
   ollama_webui_config:
     driver: local
