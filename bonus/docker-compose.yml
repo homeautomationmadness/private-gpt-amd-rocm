@@ -67,7 +67,7 @@ services:
     # command: -H unix:///var/run/docker.sock # # Use Docker Socket Proxy instead for improved security
     # command: -H tcp://192.168.91.253 # appears to not work. Workaround was to create a new socket-proxymedia endpoint on portainer settings
     networks:
-      backend:
+      ai_net:
       socket_proxy:
     ports:
       - "$PORTAINER_PORT:9000"
@@ -93,7 +93,7 @@ services:
     hostname: alloydbomni
     restart: unless-stopped
     networks:
-      backend:
+      ai_net:
     volumes:
       - "alloydbomni_data:/var/lib/postgresql/data"
     environment:
@@ -300,14 +300,6 @@ networks:
     ipam: # You can specify the subnet for each network, directly or using env variables
       config:
         - subnet: 192.168.91.0/24
-
-  backend:
-    external: false 
-    name: backend
-    driver: bridge
-    ipam: # You can specify the subnet for each network, directly or using env variables
-      config:
-        - subnet: 172.24.0.0/16
   
   ai_net:
     external: false 
