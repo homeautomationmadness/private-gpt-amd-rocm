@@ -132,7 +132,8 @@ services:
 ###############################################################
 # Volumes
 ###############################################################
-volumes:alloydbomni_data:
+volumes:
+  alloydbomni_data:
     driver: local
     name: alloydbomni_data
     driver_opts:
